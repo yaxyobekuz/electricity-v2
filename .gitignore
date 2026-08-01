@@ -1,6 +1,6 @@
 # See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# dependencies
+# ─── Bog'liqliklar ───────────────────────────────────────────────
 /node_modules
 /.pnp
 .pnp.*
@@ -10,32 +10,77 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
-
-# next.js
+# ─── Next.js / build natijalari ──────────────────────────────────
 /.next/
 /out/
-
-# production
 /build
+/dist
+.turbo
+*.tsbuildinfo
+next-env.d.ts
 
-# misc
-.DS_Store
-*.pem
+package-lock.json
 
-# debug
+# ─── Muhit o'zgaruvchilari ───────────────────────────────────────
+# .env ichida DATABASE_URL va parol bor — hech qachon commit qilinmaydi.
+# Faqat .env.example commit qilinadi (namuna sifatida, sirsiz).
+.env*
+!.env.example
+
+# ─── Prisma ──────────────────────────────────────────────────────
+# Generate qilinadigan client — `prisma generate` qayta yaratadi
+# (postinstall skripti orqali avtomatik).
+/app/generated/prisma
+
+# Prisma Postgres lokal server ma'lumotlari.
+/prisma/.prisma
+/prisma/dev.db
+/prisma/dev.db-journal
+
+# DIQQAT: prisma/migrations/ commit QILINADI — migration tarixi
+# jamoaviy ish va production deploy uchun majburiy.
+
+# ─── AI vositalari ───────────────────────────────────────────────
+# Prisma o'rnatgan skill fayllari. skills-lock.json commit qilinadi,
+# skill'larning o'zi esa undan qayta tiklanadi (node_modules kabi).
+.claude/skills/
+.agents/
+.windsurf/
+
+# Claude Code lokal sozlamalari (shaxsiy, jamoaga tegishli emas).
+.claude/settings.local.json
+
+# ─── Testlash ────────────────────────────────────────────────────
+/coverage
+*.lcov
+
+# ─── Loglar ──────────────────────────────────────────────────────
+*.log
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# ─── Muharrir / IDE ──────────────────────────────────────────────
+.idea/
+*.swp
+*.swo
+*~
 
-# vercel
+# VS Code: jamoaviy sozlamalar commit qilinadi, qolgani yo'q.
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# ─── Operatsion tizim ────────────────────────────────────────────
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+ehthumbs.db
+
+# ─── Turli ───────────────────────────────────────────────────────
+*.pem
 .vercel
-
-# typescript
-*.tsbuildinfo
-next-env.d.ts
