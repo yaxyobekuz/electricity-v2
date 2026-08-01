@@ -23,11 +23,6 @@ export type NavItem = {
  */
 export const navItems: NavItem[] = [
   { label: "Boshqaruv paneli", href: "/", icon: LayoutDashboard },
-  { label: "Iste'molchilar", href: "/consumers", icon: Users },
-  { label: "Hisoblagichlar", href: "/meters", icon: Gauge },
-  { label: "Ko'rsatkichlar", href: "/readings", icon: Zap },
-  { label: "To'lovlar", href: "/payments", icon: Receipt },
-  { label: "Tariflar", href: "/tariffs", icon: FileText },
 ];
 
 /** Joriy yo'lga mos bo'limni topadi (eng uzun mos prefiks bo'yicha). */
