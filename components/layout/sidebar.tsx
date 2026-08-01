@@ -31,7 +31,7 @@ export function Sidebar({ isOpen, onClose }: SidebarProps) {
         md+ : `static` — flex oqimining doimiy qismi.
       */}
       <aside
-        className={`fixed inset-y-1.5 left-1.5 z-50 flex w-56 shrink-0 flex-col rounded-xl border border-zinc-200 bg-white transition-transform duration-200 md:static md:inset-auto md:translate-x-0 dark:border-zinc-800 dark:bg-zinc-900 ${
+        className={`fixed inset-y-1.5 left-1.5 z-50 flex w-56 shrink-0 flex-col rounded-xl border border-zinc-200 bg-zinc-50 transition-transform duration-200 md:static md:inset-auto md:translate-x-0 dark:border-zinc-800 dark:bg-zinc-900 ${
           isOpen ? "translate-x-0" : "-translate-x-[120%]"
         }`}
       >

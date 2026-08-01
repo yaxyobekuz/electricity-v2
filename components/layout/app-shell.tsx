@@ -37,8 +37,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <Header onMenuClick={() => setSidebarOpen(true)} />
 
-        {/* Main panel — bu yerga har bir sahifaning page.tsx'i tushadi */}
-        <main className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
+        {/*
+          Main panel — bu yerga har bir sahifaning page.tsx'i tushadi.
+
+          Ataylab fon, ramka va burchaklarsiz: kontent sahifa foni ustida
+          erkin turadi. Tarkibdagi kartalar va jadvallar o'z ramkasiga ega,
+          shuning uchun qo'shimcha "oq quti" faqat ko'rishni qiyinlashtirardi.
+        */}
+        <main className="min-h-0 flex-1 overflow-y-auto px-1 py-1">
           {children}
         </main>
       </div>

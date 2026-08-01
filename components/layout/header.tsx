@@ -15,7 +15,7 @@ export function Header({ onMenuClick }: HeaderProps) {
   const active = findActiveNavItem(pathname);
 
   return (
-    <header className="flex h-11 shrink-0 items-center gap-2 rounded-xl border border-zinc-200 bg-white px-2 sm:px-3 dark:border-zinc-800 dark:bg-zinc-900">
+    <header className="flex h-11 shrink-0 items-center gap-2 rounded-xl border border-zinc-200 bg-zinc-50 px-2 sm:px-3 dark:border-zinc-800 dark:bg-zinc-900">
       <button
         type="button"
         onClick={onMenuClick}

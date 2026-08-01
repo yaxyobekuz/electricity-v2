@@ -1,46 +1,81 @@
-/** Barcha sahifalarda bir xil formatlash uchun umumiy funksiyalar. */
+/**
+ * Formatlash funksiyalari.
+ *
+ * DIQQAT: bu yerda `Intl` ATAYLAB ishlatilmaydi.
+ *
+ * `Intl.DateTimeFormat("uz-UZ", { month: "long" })` Node (server) va brauzer
+ * (client) da HAR XIL natija beradi — ICU ma'lumotlari mos kelmaydi:
+ * serverda "avgust, 2026", brauzerda "2026 M08". Bu React'da hidratsiya
+ * xatosiga olib keladi va "2026 M08" o'zbekcha ham emas.
+ *
+ * Shuning uchun oy nomlari va sonlar qo'lda formatlanadi — natija serverda
+ * ham, brauzerda ham bir xil va to'g'ri o'zbekcha bo'ladi.
+ */
 
-const numberFormatter = new Intl.NumberFormat("uz-UZ", {
-  maximumFractionDigits: 2,
-});
+const MONTHS = [
+  "yanvar",
+  "fevral",
+  "mart",
+  "aprel",
+  "may",
+  "iyun",
+  "iyul",
+  "avgust",
+  "sentabr",
+  "oktabr",
+  "noyabr",
+  "dekabr",
+];
 
-const dateFormatter = new Intl.DateTimeFormat("uz-UZ", {
-  day: "2-digit",
-  month: "2-digit",
-  year: "numeric",
-  timeZone: "UTC",
-});
-
-const periodFormatter = new Intl.DateTimeFormat("uz-UZ", {
-  month: "long",
-  year: "numeric",
-  timeZone: "UTC",
-});
-
-/** Prisma `Decimal` ham, `number` ham qabul qilinadi. */
+/**
+ * Sonni o'zbek yozuvida formatlaydi: minglar probel bilan, kasr vergul bilan.
+ * Masalan: 1843.75 → "1 843,75"
+ */
 export function formatNumber(value: unknown): string {
-  return numberFormatter.format(Number(value ?? 0));
-}
+  if (value === null || value === undefined || value === "") return "—";
 
-export function formatMoney(value: unknown): string {
-  return `${numberFormatter.format(Number(value ?? 0))} so'm`;
+  const n = Number(value);
+  if (!Number.isFinite(n)) return "—";
+
+  const negative = n < 0;
+  const abs = Math.abs(n);
+
+  // 2 xonagacha yaxlitlaymiz, keraksiz nollarni olib tashlaymiz.
+  const rounded = Math.round(abs * 100) / 100;
+  const [whole, fraction] = rounded.toFixed(2).split(".");
+
+  // Minglar ajratgichi — uzuvsiz probel ( ), shunda son qator oxirida uzilmaydi.
+  const grouped = whole.replace(/\B(?=(\d{3})+(?!\d))/g, " ");
+  const trimmed = fraction.replace(/0+$/, "");
+
+  return `${negative ? "−" : ""}${grouped}${trimmed ? `,${trimmed}` : ""}`;
 }
 
 export function formatKwh(value: unknown): string {
-  return `${numberFormatter.format(Number(value ?? 0))} kVt·s`;
+  if (value === null || value === undefined) return "—";
+  return `${formatNumber(value)} kVt·s`;
 }
 
+export function formatKva(value: unknown): string {
+  if (value === null || value === undefined) return "—";
+  return `${formatNumber(value)} kVA`;
+}
+
+export function formatPercent(value: unknown): string {
+  if (value === null || value === undefined) return "—";
+  return `${formatNumber(value)}%`;
+}
+
+/** Sana: "01.08.2026" (UTC bo'yicha). */
 export function formatDate(value: Date | null | undefined): string {
-  return value ? dateFormatter.format(value) : "—";
+  if (!value) return "—";
+
+  const day = String(value.getUTCDate()).padStart(2, "0");
+  const month = String(value.getUTCMonth() + 1).padStart(2, "0");
+  return `${day}.${month}.${value.getUTCFullYear()}`;
 }
 
 /** Hisobot davri: "avgust 2026". */
 export function formatPeriod(value: Date): string {
-  return periodFormatter.format(value);
-}
-
-/** Joriy oyning birinchi kuni — hisobot davri kaliti. */
-export function currentPeriod(): Date {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
+  return `${MONTHS[value.getUTCMonth()]} ${value.getUTCFullYear()}`;
 }

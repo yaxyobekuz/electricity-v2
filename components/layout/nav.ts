@@ -1,4 +1,10 @@
-import { LayoutDashboard } from "lucide-react";
+import {
+  Activity,
+  Boxes,
+  LayoutDashboard,
+  Upload,
+  Zap,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type NavItem = {
@@ -11,11 +17,15 @@ export type NavItem = {
  * Sidebar navigatsiyasi va Header sarlavhasi shu bitta manbadan o'qiladi.
  *
  * QOIDA: bu ro'yxatda faqat HAQIQATDA MAVJUD sahifalar bo'lishi kerak —
- * ya'ni har bir `href` uchun `app/<href>/page.tsx` mavjud bo'lsin.
- * Aks holda foydalanuvchi 404 sahifaga tushadi.
+ * har bir `href` uchun `app/<href>/page.tsx` mavjud bo'lsin.
  */
 export const navItems: NavItem[] = [
   { label: "Boshqaruv paneli", href: "/", icon: LayoutDashboard },
+  // Mustaqil bo'limlar: ro'yxat + to'liq boshqaruv.
+  { label: "Fiderlar", href: "/feeders", icon: Zap },
+  { label: "TP'lar", href: "/tp", icon: Boxes },
+  { label: "Fider ko'rsatkichlari", href: "/feeder-readings", icon: Activity },
+  { label: "Excel import", href: "/import", icon: Upload },
 ];
 
 /** Joriy yo'lga mos bo'limni topadi (eng uzun mos prefiks bo'yicha). */

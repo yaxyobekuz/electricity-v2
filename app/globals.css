@@ -34,3 +34,34 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }
+
+/*
+  Grafik ranglari.
+
+  Qiymatlar validatordan o'tkazilgan (dataviz skill):
+  - seriya 1↔2 (ko'k↔to'q sariq): CVD ΔE 24.7, oddiy ko'rish ΔE 33.6 — ikkala
+    rejimda ham barcha tekshiruvlardan o'tadi.
+  - status ranglari alohida: ular HECH QACHON "seriya 3" sifatida
+    ishlatilmaydi va doim yorliq bilan birga keladi — rang yolg'iz ma'no
+    tashimasligi kerak.
+
+  Dark qiymatlar avtomatik aylantirilmagan, o'sha rang shkalasining qorong'i
+  fon uchun tanlangan qadamlari.
+*/
+.viz {
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-critical: #d03b3b;
+  --viz-track: #f4f4f5;
+}
+
+.dark .viz {
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-critical: #d03b3b;
+  --viz-track: #27272a;
+}

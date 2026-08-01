@@ -1,5 +1,15 @@
-// Electricity — elektr energiyasi iste'moli hisobi va boshqaruvi.
-// Hujjat: https://pris.ly/d/prisma-schema
+// Electricity — elektr tarmog'i hisobi va tahlili.
+//
+// Ierarxiya (.claude/docs/ dagi hujjat va Excel hisobotlar asosida):
+//   ETK → Podstansiya → Ввод (Т1/Т2) → Fider (10 kV) → TP → Abonent
+//
+// Ввод — podstansiya ICHIDAGI katta kuch transformatori.
+// TP    — mahallalardagi, KO'CHADAGI transformator punkti.
+//
+// Ikki darajada oylik o'lchov olinadi:
+//   FeederReading — fider darajasi  ("umumiy hisobot" varaqasi)
+//   TpReading     — TP darajasi     ("to'liq hisobot" varaqasi)
+// Ikkalasida ham: iste'mol = (joriy − oldingi) × koeffitsient
 
 generator client {
   provider = "prisma-client"
@@ -10,253 +20,221 @@ datasource db {
   provider = "postgresql"
 }
 
-// ─────────────────────────── Enum'lar ───────────────────────────
-
-/// Iste'molchi turi — jismoniy yoki yuridik shaxs.
-enum ConsumerType {
-  INDIVIDUAL // jismoniy shaxs
-  LEGAL // yuridik shaxs
-}
-
-enum MeterType {
-  SINGLE_PHASE // bir fazali
-  THREE_PHASE // uch fazali
-}
-
-enum MeterStatus {
-  ACTIVE // ishlayapti
-  INACTIVE // vaqtincha o'chirilgan
-  FAULTY // nosoz
-  REMOVED // demontaj qilingan
-}
-
-/// Ko'rsatkich qanday olingani.
-enum ReadingSource {
-  MANUAL // nazoratchi qo'lda kiritgan
-  AUTO // avtomatik (smart hisoblagich)
-  ESTIMATED // o'rtacha bo'yicha hisoblangan
-}
-
-/// Tarif toifasi — narx shu toifaga bog'liq.
-enum TariffCategory {
-  RESIDENTIAL // aholi
-  COMMERCIAL // tijorat
-  INDUSTRIAL // sanoat
-  AGRICULTURAL // qishloq xo'jaligi
-}
-
-enum InvoiceStatus {
-  DRAFT // shakllantirilmoqda
-  ISSUED // chiqarilgan
-  PARTIALLY_PAID // qisman to'langan
-  PAID // to'liq to'langan
-  OVERDUE // muddati o'tgan
-  CANCELLED // bekor qilingan
-}
-
-enum PaymentMethod {
-  CASH // naqd
-  CARD // plastik karta
-  TRANSFER // bank o'tkazmasi
-  ONLINE // onlayn to'lov tizimi
-}
-
-enum UserRole {
-  ADMIN // to'liq huquq
-  OPERATOR // hisob-faktura, to'lov
-  INSPECTOR // faqat ko'rsatkich kiritish
-}
-
-// ─────────────────────────── Modellar ───────────────────────────
-
-/// Tizim foydalanuvchisi (xodim). Iste'molchi emas.
-model User {
-  id           String   @id @default(uuid())
-  email        String   @unique
-  fullName     String
-  passwordHash String
-  role         UserRole @default(OPERATOR)
-  isActive     Boolean  @default(true)
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  readings Reading[] @relation("ReadingRecordedBy")
-
-  @@map("users")
-}
-
-/// Elektr energiyasi iste'molchisi (abonent).
-model Consumer {
-  id       String       @id @default(uuid())
-  /// Shartnoma / abonent raqami — hujjatlarda ishlatiladigan asosiy identifikator.
-  code     String       @unique
-  fullName String
-  type     ConsumerType @default(INDIVIDUAL)
-  phone    String?
-  email    String?
-
-  region   String?
-  district String?
-  address  String
-
-  /// Joriy balans. Musbat — oldindan to'langan, manfiy — qarz.
-  balance  Decimal @default(0) @db.Decimal(14, 2)
-  isActive Boolean @default(true)
+/// Elektr tarmoqlari korxonasi — "Chinobod ETK".
+model Etk {
+  id   String @id @default(uuid())
+  name String @unique
+  note String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  meters   Meter[]
-  invoices Invoice[]
-  payments Payment[]
+  substations Substation[]
 
-  @@index([region, district])
-  @@index([isActive])
-  @@map("consumers")
+  @@map("etks")
 }
 
-/// Iste'molchiga o'rnatilgan hisoblagich.
-model Meter {
-  id           String      @id @default(uuid())
-  serialNumber String      @unique
-  consumerId   String
-  type         MeterType   @default(SINGLE_PHASE)
-  status       MeterStatus @default(ACTIVE)
-  model        String?
+/// Podstansiya — 110 kV kirib, 35 kV va 10 kV ga bo'linib beriladi.
+model Substation {
+  id    String @id @default(uuid())
+  etkId String
 
-  /// O'rnatilgan paytdagi boshlang'ich ko'rsatkich (kVt·s).
-  initialReading Decimal   @default(0) @db.Decimal(12, 2)
-  installedAt    DateTime  @default(now())
-  /// Oxirgi texnik tekshiruv sanasi.
-  lastCheckedAt  DateTime?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  consumer Consumer  @relation(fields: [consumerId], references: [id], onDelete: Cascade)
-  readings Reading[]
-
-  @@index([consumerId])
-  @@index([status])
-  @@map("meters")
-}
-
-/// Hisoblagichdan olingan oylik ko'rsatkich.
-model Reading {
-  id      String @id @default(uuid())
-  meterId String
-
-  /// Hisobot davri, oyning birinchi kuni sifatida saqlanadi (masalan 2026-08-01).
-  period DateTime @db.Date
-
-  /// Hisoblagichning shu davrdagi umumiy ko'rsatkichi (kVt·s).
-  value         Decimal @db.Decimal(12, 2)
-  /// Oldingi davr ko'rsatkichi — hisobni tekshirish uchun saqlanadi.
-  previousValue Decimal @default(0) @db.Decimal(12, 2)
-  /// value - previousValue. Denormalizatsiya: hisobotlarni tezlashtiradi.
-  consumption   Decimal @db.Decimal(12, 2)
-
-  source      ReadingSource @default(MANUAL)
-  readingDate DateTime      @default(now())
+  /// "НИМ станция Чинобод 110/35/10 кВ"
+  name        String @unique
+  /// "110/35/10"
+  voltageType String
+  address     String?
   note        String?
 
-  recordedById String?
-
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  meter      Meter    @relation(fields: [meterId], references: [id], onDelete: Cascade)
-  recordedBy User?    @relation("ReadingRecordedBy", fields: [recordedById], references: [id], onDelete: SetNull)
-  invoice    Invoice?
+  etk          Etk           @relation(fields: [etkId], references: [id], onDelete: Cascade)
+  transformers Transformer[]
 
-  /// Bitta hisoblagich uchun bir davrda faqat bitta ko'rsatkich.
-  @@unique([meterId, period])
-  @@index([period])
-  @@map("readings")
+  @@index([etkId])
+  @@map("substations")
 }
 
-/// Narx toifasi. Narx o'zgarganda eski yozuv tahrirlanmaydi —
-/// validTo qo'yilib, yangi yozuv ochiladi (tarix saqlanishi uchun).
-model Tariff {
-  id          String         @id @default(uuid())
+/// Ввод — podstansiya ichidagi kuch transformatori (Т1, Т2).
+model Transformer {
+  id           String @id @default(uuid())
+  substationId String
+
+  /// "ВВОД Т1 25 000 кВА"
   name        String
-  category    TariffCategory @default(RESIDENTIAL)
-  /// 1 kVt·s narxi.
-  pricePerKwh Decimal        @db.Decimal(12, 4)
-  currency    String         @default("UZS")
-
-  validFrom DateTime  @default(now())
-  validTo   DateTime?
-  isActive  Boolean   @default(true)
+  /// Quvvati, kVA: 25000 / 40000
+  capacityKva Int
+  note        String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  invoices Invoice[]
+  substation Substation @relation(fields: [substationId], references: [id], onDelete: Cascade)
+  feeders    Feeder[]
 
-  @@index([category, isActive])
-  @@map("tariffs")
+  @@unique([substationId, name])
+  @@index([substationId])
+  @@map("transformers")
 }
 
-/// Oylik hisob-faktura: ko'rsatkich + tarif → to'lanishi kerak bo'lgan summa.
-model Invoice {
-  id         String @id @default(uuid())
-  /// Ko'rinadigan hisob raqami, masalan "INV-2026-08-000123".
-  number     String @unique
-  consumerId String
-  /// Har bir ko'rsatkichdan ko'pi bilan bitta hisob-faktura chiqadi.
-  readingId  String @unique
-  tariffId   String
+/// 10 kV fider — ввод'dan ajralib chiquvchi liniya.
+model Feeder {
+  id            String @id @default(uuid())
+  transformerId String
+
+  /// Asosiy nom. Hujjatlarda kirillcha keladi: "Жўжахона".
+  name    String
+  /// Kuchlanish, kV.
+  voltage Int    @default(10)
+
+  /// Tok transformatori (TT) koeffitsienti: 1000, 2000, 3000, 4000, 6000.
+  /// Hisoblagich farqi shu songa ko'paytiriladi.
+  coefficient Int
+
+  /// Boshqa alifbo/imlodagi variantlar: "Jo'jaxona", "Jojaxona".
+  /// Excel import fider nomini shu ro'yxat bo'yicha ham qidiradi —
+  /// hujjatlarning bir qismi lotin, bir qismi kirill yozuvida kelgani uchun.
+  aliases String[] @default([])
+
+  isActive Boolean @default(true)
+  note     String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  transformer Transformer     @relation(fields: [transformerId], references: [id], onDelete: Cascade)
+  readings    FeederReading[]
+  tpPoints    TpPoint[]
+
+  @@unique([transformerId, name])
+  @@index([transformerId])
+  @@map("feeders")
+}
+
+/// Fiderning oylik ko'rsatkichi — "umumiy hisobot" varaqasidagi qator.
+model FeederReading {
+  id       String @id @default(uuid())
+  feederId String
+
+  /// Hisobot davri — oyning 1-kuni (masalan 2026-08-01).
+  period DateTime @db.Date
+
+  meterValue    Decimal @db.Decimal(14, 2)
+  previousValue Decimal @default(0) @db.Decimal(14, 2)
+  /// meterValue − previousValue ("Фарки" ustuni).
+  difference    Decimal @db.Decimal(14, 2)
+  /// difference × coefficient ("Бир ойлик окиб утган электр").
+  consumedKwh   Decimal @db.Decimal(16, 2)
+  /// Hisob paytidagi koeffitsient nusxasi.
+  coefficient   Int
+
+  /// "Elektr oqimi" — TP hisoblagichlari bo'yicha real o'tgan miqdor.
+  /// Hamma fiderda o'lchanmagan, shuning uchun ixtiyoriy.
+  electricFlowKwh Decimal? @db.Decimal(16, 2)
+
+  /// Texnologik yo'qotish foizi (hujjatda 12%).
+  technicalLossPercent Decimal  @default(12) @db.Decimal(5, 2)
+  /// consumedKwh × technicalLossPercent / 100
+  technicalLossKwh     Decimal? @db.Decimal(16, 2)
+  /// consumedKwh − electricFlowKwh − technicalLossKwh
+  commercialLossKwh    Decimal? @db.Decimal(16, 2)
+
+  /// Fiderning ENG BIRINCHI o'lchovi — oldingi qiymat yo'q, iste'mol
+  /// hisoblanmaydi. Aks holda hisoblagichning umrlik ko'rsatkichi bir oylik
+  /// iste'mol deb olinib, natija yuz barobar shishib ketadi.
+  isBaseline Boolean @default(false)
+
+  note String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  feeder Feeder @relation(fields: [feederId], references: [id], onDelete: Cascade)
+
+  @@unique([feederId, period])
+  @@index([period])
+  @@map("feeder_readings")
+}
+
+/// TP — mahalladagi transformator punkti va uning balans hisoblagichi.
+model TpPoint {
+  id       String @id @default(uuid())
+  feederId String
+
+  /// "1", "29A", "44А" — harf ham uchraydi, shuning uchun matn.
+  tpNumber String @unique
+  address  String?
+
+  /// Balans hisoblagichi turi: "EX518 5A".
+  meterType   String?
+  /// Hisoblagich raqami: "124200518951".
+  meterSerial String? @unique
+  /// TP hisoblagichi koeffitsienti: 20, 40, 60, 70, 80, 120.
+  coefficient Int
+
+  capacityKva Int?
+  isActive    Boolean @default(true)
+  note        String?
+
+  /// Abonentlarning JORIY soni — TP kartochkasida ko'rsatiladi va qo'lda
+  /// tahrirlanadi. Oylik tarix `TpReading` da alohida saqlanadi; import
+  /// oxirgi hisobotdan shu joriy qiymatlarni ham yangilab qo'yadi.
+  consumersTotal   Int?
+  consumersOnline  Int?
+  consumersOffline Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  feeder   Feeder      @relation(fields: [feederId], references: [id], onDelete: Cascade)
+  readings TpReading[]
+
+  @@index([feederId])
+  @@map("tp_points")
+}
+
+/// TP ning oylik ko'rsatkichi — "to'liq hisobot" varaqasidagi qator.
+model TpReading {
+  id        String @id @default(uuid())
+  tpPointId String
 
   period DateTime @db.Date
 
-  /// Hisob-faktura chiqarilgan paytdagi qiymatlar — keyin tarif o'zgarsa ham
-  /// bu yozuv o'zgarmaydi (tarixiy aniqlik uchun nusxa saqlanadi).
-  consumptionKwh Decimal @db.Decimal(12, 2)
-  pricePerKwh    Decimal @db.Decimal(12, 4)
-  amount         Decimal @db.Decimal(14, 2)
-  /// Shu hisob-fakturaga tushgan to'lovlar yig'indisi.
-  paidAmount     Decimal @default(0) @db.Decimal(14, 2)
+  meterValue    Decimal @db.Decimal(14, 2)
+  previousValue Decimal @default(0) @db.Decimal(14, 2)
+  /// meterValue − previousValue ("Farqi").
+  difference    Decimal @db.Decimal(14, 2)
+  /// difference × coefficient ("Bir oylik iste'moli").
+  consumedKwh   Decimal @db.Decimal(16, 2)
+  coefficient   Int
 
-  status   InvoiceStatus @default(DRAFT)
-  issuedAt DateTime?
-  dueDate  DateTime?
-  paidAt   DateTime?
+  /// Abonentlar soni — har oyda o'zgaradi, shuning uchun o'lchovga bog'langan.
+  consumersTotal   Int?
+  /// "Aloqaga chiqayotgan" — hisoblagichi aloqada bo'lgan abonentlar.
+  consumersOnline  Int?
+  /// "Aloqadan chiqib ketgan".
+  consumersOffline Int?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  /// Tarif zonalari bo'yicha taqsimot (T1–T4).
+  zoneT1 Decimal? @db.Decimal(14, 2)
+  zoneT2 Decimal? @db.Decimal(14, 2)
+  zoneT3 Decimal? @db.Decimal(14, 2)
+  zoneT4 Decimal? @db.Decimal(14, 2)
 
-  consumer Consumer  @relation(fields: [consumerId], references: [id], onDelete: Cascade)
-  reading  Reading   @relation(fields: [readingId], references: [id], onDelete: Cascade)
-  tariff   Tariff    @relation(fields: [tariffId], references: [id], onDelete: Restrict)
-  payments Payment[]
+  /// Reaktiv energiya: R+ va R− (kWh).
+  reactivePlus  Decimal? @db.Decimal(14, 2)
+  reactiveMinus Decimal? @db.Decimal(14, 2)
 
-  @@index([consumerId, period])
-  @@index([status])
-  @@map("invoices")
-}
-
-/// Iste'molchidan tushgan to'lov. Hisob-fakturaga bog'lanmasligi ham mumkin
-/// (oldindan to'lov / balansni to'ldirish).
-model Payment {
-  id         String  @id @default(uuid())
-  consumerId String
-  invoiceId  String?
-
-  amount    Decimal       @db.Decimal(14, 2)
-  method    PaymentMethod @default(CASH)
-  /// Tashqi tizim tranzaksiya raqami / kvitansiya.
-  reference String?
-  paidAt    DateTime      @default(now())
-  note      String?
+  isBaseline Boolean @default(false)
+  note       String?
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  consumer Consumer @relation(fields: [consumerId], references: [id], onDelete: Cascade)
-  invoice  Invoice? @relation(fields: [invoiceId], references: [id], onDelete: SetNull)
+  tpPoint TpPoint @relation(fields: [tpPointId], references: [id], onDelete: Cascade)
 
-  @@index([consumerId, paidAt])
-  @@index([invoiceId])
-  @@map("payments")
+  @@unique([tpPointId, period])
+  @@index([period])
+  @@map("tp_readings")
 }
