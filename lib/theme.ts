@@ -2,6 +2,12 @@ export type Theme = "light" | "dark" | "system";
 
 export const THEME_STORAGE_KEY = "theme";
 
+/**
+ * Brauzerning `storage` hodisasi faqat BOSHQA tab'larda ishga tushadi.
+ * Shu tab ichidagi o'zgarishni bildirish uchun o'z hodisamizni yuboramiz.
+ */
+export const THEME_CHANGE_EVENT = "theme-change";
+
 /** `.dark` class'ini `<html>` ga qo'yadi yoki olib tashlaydi. */
 export function applyTheme(theme: Theme) {
   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
