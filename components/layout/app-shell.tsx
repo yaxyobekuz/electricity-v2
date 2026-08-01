@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { usePathname } from "next/navigation";
 
 import { Header } from "./header";
 import { Sidebar } from "./sidebar";
@@ -15,12 +14,9 @@ import { Sidebar } from "./sidebar";
  */
 export function AppShell({ children }: { children: React.ReactNode }) {
   const [isSidebarOpen, setSidebarOpen] = useState(false);
-  const pathname = usePathname();
 
-  // Boshqa bo'limga o'tilganda drawer yopiladi.
-  useEffect(() => {
-    setSidebarOpen(false);
-  }, [pathname]);
+  // Boshqa bo'limga o'tilganda drawer Sidebar'ning o'zida yopiladi
+  // (havola bosilganda) — effect kerak emas.
 
   // Drawer ochiq bo'lganda Esc bilan yopish.
   useEffect(() => {
@@ -35,17 +31,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }, [isSidebarOpen]);
 
   return (
-    <div className="flex h-dvh gap-3 p-3">
-      <Sidebar
-        isOpen={isSidebarOpen}
-        onClose={() => setSidebarOpen(false)}
-      />
+    <div className="flex h-dvh gap-1.5 p-1.5">
+      <Sidebar isOpen={isSidebarOpen} onClose={() => setSidebarOpen(false)} />
 
-      <div className="flex min-w-0 flex-1 flex-col gap-3">
+      <div className="flex min-w-0 flex-1 flex-col gap-1.5">
         <Header onMenuClick={() => setSidebarOpen(true)} />
 
         {/* Main panel — bu yerga har bir sahifaning page.tsx'i tushadi */}
-        <main className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-zinc-200 bg-white p-6 dark:border-zinc-800 dark:bg-zinc-900">
+        <main className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900">
           {children}
         </main>
       </div>

@@ -1,11 +1,4 @@
-import {
-  FileText,
-  Gauge,
-  LayoutDashboard,
-  Receipt,
-  Users,
-  Zap,
-} from "lucide-react";
+import { LayoutDashboard } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 
 export type NavItem = {
