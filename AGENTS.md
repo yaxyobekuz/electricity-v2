@@ -74,5 +74,32 @@ Sidebar/Header'ni qo'lda tahrirlash shart emas — ular avtomatik yangilanadi.
 - Interfeys tili — **o'zbekcha**. Kod (o'zgaruvchi, funksiya, fayl nomlari) — inglizcha.
 - Yo'l aliasi: `@/*` → loyiha ildizi.
 - Ikonkalar: `lucide-react`.
-- Ranglar: `zinc` shkalasi, urg'u rangi `amber`. Dark mode `prefers-color-scheme` orqali — har bir yangi komponentda `dark:` variantlarini ham yoz.
+- Ranglar: `zinc` shkalasi, urg'u rangi `amber`.
+- Formatlash (son, pul, sana) — `lib/format.ts` dagi funksiyalar. Komponent ichida `Intl.NumberFormat` yaratma.
 - Umumiy komponentlar `components/` da, shell qismlari `components/layout/` da.
+
+### Zichlik (spacing)
+
+Interfeys **ixcham**. Yangi komponent yozganda shu shkalaga amal qil:
+
+| Joy | Qiymat |
+|---|---|
+| Panellar orasidagi masofa va tashqi padding | `gap-1.5` / `p-1.5` |
+| Panel ichidagi padding | `p-3` |
+| Karta ichidagi padding | `p-3` |
+| Blok elementlar orasi | `gap-2` — `gap-3` |
+| Burchaklar | `rounded-xl` (katta panel), `rounded-lg` (ichki element) |
+| Ikonka o'lchami | `size-3.5` / `size-4` |
+
+`p-5`, `p-6`, `gap-6`, `h-16` kabi keng qiymatlar ishlatilmaydi.
+
+### Rang rejimi (light / dark / system)
+
+Dark mode **`prefers-color-scheme` orqali EMAS** — u `<html>` dagi `.dark` class'i bilan boshqariladi:
+
+- `app/globals.css` da `@custom-variant dark (&:where(.dark, .dark *));` — Tailwind'ning `dark:` variantini class'ga bog'laydi.
+- `lib/theme.ts` — holat mantiqi. `themeInitScript` `<head>` ga qo'yiladi va React'dan oldin ishlaydi (FOUC bo'lmasligi uchun).
+- Tanlov `localStorage` da: `"light" | "dark" | "system"`.
+- `components/layout/theme-toggle.tsx` — `useSyncExternalStore` bilan o'qiydi (effect + `setState` emas: ESLint `react-hooks/set-state-in-effect` qoidasi buni taqiqlaydi).
+
+Har bir yangi komponentda `dark:` variantlarini ham yoz — aks holda u qorong'i rejimda buziladi.
