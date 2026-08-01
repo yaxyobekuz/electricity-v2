@@ -1,8 +1,26 @@
 @import "tailwindcss";
 
+/*
+  Tailwind v4'da `dark:` sukut bo'yicha `prefers-color-scheme`ga bog'langan,
+  ya'ni uni koddan boshqarib bo'lmaydi. Bu yerda uni `.dark` class'iga
+  o'tkazamiz — endi temani `<html>` elementiga class qo'shib almashtiramiz.
+
+  "Tizim" rejimi yo'qolmaydi: ThemeToggle OS sozlamasini o'qib, kerak bo'lsa
+  `.dark` class'ini o'zi qo'yadi.
+*/
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  /* Brauzerning o'z elementlari (scrollbar, input, select) ham moslashsin */
+  color-scheme: light;
+}
+
+.dark {
+  --background: #0a0a0a;
+  --foreground: #ededed;
+  color-scheme: dark;
 }
 
 @theme inline {
@@ -12,15 +30,7 @@
   --font-mono: var(--font-geist-mono);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
 body {
-  background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
 }
