@@ -16,7 +16,10 @@ export type NavItem = {
 
 /**
  * Sidebar navigatsiyasi va Header sarlavhasi shu bitta manbadan o'qiladi.
- * Yangi bo'lim qo'shilganda faqat shu ro'yxat yangilanadi.
+ *
+ * QOIDA: bu ro'yxatda faqat HAQIQATDA MAVJUD sahifalar bo'lishi kerak —
+ * ya'ni har bir `href` uchun `app/<href>/page.tsx` mavjud bo'lsin.
+ * Aks holda foydalanuvchi 404 sahifaga tushadi.
  */
 export const navItems: NavItem[] = [
   { label: "Boshqaruv paneli", href: "/", icon: LayoutDashboard },
@@ -25,8 +28,6 @@ export const navItems: NavItem[] = [
   { label: "Ko'rsatkichlar", href: "/readings", icon: Zap },
   { label: "To'lovlar", href: "/payments", icon: Receipt },
   { label: "Tariflar", href: "/tariffs", icon: FileText },
-  { label: "Hisobotlar", href: "/reports", icon: BarChart3 },
-  { label: "Sozlamalar", href: "/settings", icon: Settings },
 ];
 
 /** Joriy yo'lga mos bo'limni topadi (eng uzun mos prefiks bo'yicha). */
