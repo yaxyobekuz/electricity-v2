@@ -51,6 +51,8 @@ body {
 .viz {
   --series-1: #2a78d6;
   --series-2: #eb6834;
+  --series-3: #1baf7a;
+  --series-4: #eda100;
   --status-good: #0ca30c;
   --status-warning: #fab219;
   --status-critical: #d03b3b;
@@ -60,8 +62,65 @@ body {
 .dark .viz {
   --series-1: #3987e5;
   --series-2: #d95926;
+  --series-3: #199e70;
+  --series-4: #c98500;
   --status-good: #0ca30c;
   --status-warning: #fab219;
   --status-critical: #d03b3b;
   --viz-track: #27272a;
+}
+
+/* ─── Animatsiya ───────────────────────────────────────────────
+   Faqat kirish effektlari: bar'lar o'sadi, kartalar suzib chiqadi.
+   Ma'lumot o'zgarmaydi — animatsiya faqat diqqatni yo'naltiradi.   */
+
+@keyframes viz-grow {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+@keyframes viz-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes viz-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.viz-bar {
+  transform-origin: left center;
+  animation: viz-grow 0.7s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.viz-rise {
+  animation: viz-rise 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.viz-fade {
+  animation: viz-fade 0.6s ease-out both;
+}
+
+/* Harakatni kamaytirish so'ralgan bo'lsa — hech qanday animatsiya yo'q. */
+@media (prefers-reduced-motion: reduce) {
+  .viz-bar,
+  .viz-rise,
+  .viz-fade {
+    animation: none;
+  }
 }

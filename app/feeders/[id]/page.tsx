@@ -13,7 +13,6 @@ import {
   EmptyRow,
   Field,
   Input,
-  Notice,
   PageHeading,
   Select,
   StatCard,
@@ -88,8 +87,6 @@ export default async function FeederDetailPage({
         })
       : null;
 
-  const exceeds =
-    latest && flowMeasured && latestFlow > toNumber(latest.consumedKwh);
 
   const consumers = feeder.tpPoints.reduce(
     (s, tp) => s + (tp.consumersTotal ?? 0),

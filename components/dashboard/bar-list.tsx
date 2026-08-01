@@ -39,7 +39,7 @@ export function BarList({
 
   return (
     <ul className="viz flex flex-col gap-2">
-      {items.map((item) => {
+      {items.map((item, index) => {
         const pct = max > 0 ? (Math.abs(item.value) / max) * 100 : 0;
 
         return (
@@ -74,8 +74,12 @@ export function BarList({
               role="presentation"
             >
               <div
-                className="h-full rounded-full"
-                style={{ width: `${pct}%`, background: color }}
+                className="viz-bar h-full rounded-full"
+                style={{
+                  width: `${pct}%`,
+                  background: color,
+                  animationDelay: `${index * 45}ms`,
+                }}
               />
             </div>
           </li>
@@ -121,7 +125,7 @@ export function DualBarList({
       </div>
 
       <ul className="flex flex-col gap-2">
-        {items.map((item) => {
+        {items.map((item, index) => {
           const aPct = max > 0 ? (item.a / max) * 100 : 0;
           const bPct = max > 0 ? (item.b / max) * 100 : 0;
 
@@ -154,12 +158,20 @@ export function DualBarList({
                 role="presentation"
               >
                 <div
-                  className="h-full rounded-full"
-                  style={{ width: `${aPct}%`, background: "var(--series-1)" }}
+                  className="viz-bar h-full rounded-full"
+                  style={{
+                    width: `${aPct}%`,
+                    background: "var(--series-1)",
+                    animationDelay: `${index * 45}ms`,
+                  }}
                 />
                 <div
-                  className="h-full rounded-full"
-                  style={{ width: `${bPct}%`, background: "var(--series-2)" }}
+                  className="viz-bar h-full rounded-full"
+                  style={{
+                    width: `${bPct}%`,
+                    background: "var(--series-2)",
+                    animationDelay: `${index * 45 + 60}ms`,
+                  }}
                 />
               </div>
             </li>
