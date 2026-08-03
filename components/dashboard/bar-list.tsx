@@ -16,6 +16,7 @@ export type BarItem = {
   /** Qiymat yonida ko'rsatiladigan qo'shimcha matn. */
   meta?: string;
   href?: string;
+  color?: string;
 };
 
 export function BarList({
@@ -38,54 +39,58 @@ export function BarList({
   }
 
   return (
-    <ul className="viz flex flex-col gap-2">
-      {items.map((item, index) => {
-        const pct = max > 0 ? (Math.abs(item.value) / max) * 100 : 0;
+    <div className="overflow-y-auto h-[245px]">
+      <ul className="viz flex flex-col gap-2">
+        {items.map((item, index) => {
+          const pct = max > 0 ? (Math.abs(item.value) / max) * 100 : 0;
 
-        return (
-          <li key={item.label} className="flex flex-col gap-1">
-            <div className="flex items-baseline justify-between gap-2">
-              <span className="truncate text-sm">
-                {item.href ? (
-                  <Link
-                    href={item.href}
-                    className="underline decoration-zinc-300 underline-offset-2 hover:decoration-zinc-900 dark:decoration-zinc-600 dark:hover:decoration-zinc-100"
-                  >
-                    {item.label}
-                  </Link>
-                ) : (
-                  item.label
-                )}
-                {item.meta && (
-                  <span className="ml-1.5 text-xs text-zinc-500">
-                    {item.meta}
-                  </span>
-                )}
-              </span>
-              <span className="shrink-0 text-sm font-medium tabular-nums">
-                {formatNumber(item.value)}
-                {unit && <span className="ml-1 text-xs text-zinc-500">{unit}</span>}
-              </span>
-            </div>
+          return (
+            <li key={item.label} className="flex flex-col gap-1">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="truncate text-sm">
+                  {item.href ? (
+                    <Link
+                      href={item.href}
+                      className="underline decoration-zinc-300 underline-offset-2 hover:decoration-zinc-900 dark:decoration-zinc-600 dark:hover:decoration-zinc-100"
+                    >
+                      {item.label}
+                    </Link>
+                  ) : (
+                    item.label
+                  )}
+                  {item.meta && (
+                    <span className="ml-1.5 text-xs text-zinc-500">
+                      {item.meta}
+                    </span>
+                  )}
+                </span>
+                <span className="shrink-0 text-sm font-medium tabular-nums">
+                  {formatNumber(item.value)}
+                  {unit && (
+                    <span className="ml-1 text-xs text-zinc-500">{unit}</span>
+                  )}
+                </span>
+              </div>
 
-            <div
-              className="h-1.5 w-full overflow-hidden rounded-full"
-              style={{ background: "var(--viz-track)" }}
-              role="presentation"
-            >
               <div
-                className="viz-bar h-full rounded-full"
-                style={{
-                  width: `${pct}%`,
-                  background: color,
-                  animationDelay: `${index * 45}ms`,
-                }}
-              />
-            </div>
-          </li>
-        );
-      })}
-    </ul>
+                className="h-1.5 w-full overflow-hidden rounded-full"
+                style={{ background: "var(--viz-track)" }}
+                role="presentation"
+              >
+                <div
+                  className="viz-bar h-full rounded-full"
+                  style={{
+                    width: `${pct}%`,
+                    background: item.color ?? color,
+                    animationDelay: `${index * 45}ms`,
+                  }}
+                />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
   );
 }
 
@@ -105,7 +110,9 @@ export function DualBarList({
   const max = Math.max(...items.map((i) => i.a + i.b), 0);
 
   if (items.length === 0) {
-    return <p className="py-8 text-center text-sm text-zinc-500">{emptyText}</p>;
+    return (
+      <p className="py-8 text-center text-sm text-zinc-500">{emptyText}</p>
+    );
   }
 
   return (

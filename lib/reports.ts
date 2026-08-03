@@ -19,8 +19,15 @@ export type FeederReportRow = {
   meterValue: number | null;
   difference: number | null;
   consumedKwh: number | null;
-  /** TP'lar yig'indisi (hisoblanadi). */
+  /**
+   * Foydali oqim — hisobotda ko'rsatilgan "Elektr oqimi".
+   * Ko'rsatilmagan bo'lsa TP hisoblagichlari yig'indisiga tushadi.
+   */
   electricFlowKwh: number;
+  /** Oqim qayerdan olindi — hisobotdanmi yoki TP'lardan hisoblandimi. */
+  flowSource: "reported" | "tp" | "none";
+  /** TP hisoblagichlari yig'indisi — hisobotdagi oqim bilan solishtirish uchun. */
+  tpSumKwh: number;
   tpCount: number;
   tpWithReadingCount: number;
   technicalLossKwh: number | null;
@@ -88,7 +95,25 @@ export async function getFeederReport(period: Date): Promise<FeederReport> {
       ? toNumber(reading.technicalLossPercent)
       : 12;
 
-    const flowMeasured = feeder._count.tpPoints > 0;
+    // Foydali oqim FAQAT hisobotdagi "Elektr oqimi" ustunidan olinadi.
+    //
+    // TP yig'indisiga tushib qolish XATO bo'lardi: TP qamrovi ko'pincha
+    // to'liq emas (masalan Paranda'da 270 000 kVt·s iste'molga atigi 2 ta TP),
+    // shunda oqim juda past chiqib, farq soxta "tijoriy yo'qotish" bo'lib
+    // ko'rinardi. Oqim ko'rsatilmagan bo'lsa u NOMA'LUM.
+    //
+    // TP yig'indisi `tpSumKwh` da alohida turadi — hisobotdagi oqim bilan
+    // solishtirish uchun foydali.
+    const reportedFlow =
+      reading?.electricFlowKwh !== null && reading?.electricFlowKwh !== undefined
+        ? toNumber(reading.electricFlowKwh)
+        : null;
+
+    const flowSource: FeederReportRow["flowSource"] =
+      reportedFlow !== null ? "reported" : "none";
+
+    const electricFlowKwh = reportedFlow ?? 0;
+    const flowMeasured = flowSource === "reported";
 
     let technicalLossKwh: number | null = null;
     let commercialLossKwh: number | null = null;
@@ -96,14 +121,13 @@ export async function getFeederReport(period: Date): Promise<FeederReport> {
     if (consumedKwh !== null && !reading?.isBaseline) {
       const losses = computeLosses({
         consumedKwh,
-        electricFlowKwh: flow.sum,
+        electricFlowKwh,
         technicalLossPercent,
       });
       technicalLossKwh = losses.technicalLossKwh;
 
-      // Fiderga TP biriktirilmagan bo'lsa oqim NOL emas, NOMA'LUM.
-      // Aks holda butun iste'mol "tijoriy yo'qotish" bo'lib ko'rinadi —
-      // aslida u shunchaki o'lchanmagan.
+      // Oqim noma'lum bo'lsa uni NOL deb olmaymiz — aks holda butun iste'mol
+      // "tijoriy yo'qotish" bo'lib ko'rinadi, aslida u shunchaki o'lchanmagan.
       commercialLossKwh = flowMeasured ? losses.commercialLossKwh : null;
     }
 
@@ -116,7 +140,9 @@ export async function getFeederReport(period: Date): Promise<FeederReport> {
       meterValue: reading ? toNumber(reading.meterValue) : null,
       difference: reading ? toNumber(reading.difference) : null,
       consumedKwh,
-      electricFlowKwh: flow.sum,
+      electricFlowKwh,
+      flowSource,
+      tpSumKwh: flow.sum,
       tpCount: feeder._count.tpPoints,
       tpWithReadingCount: flow.count,
       technicalLossKwh,
@@ -124,7 +150,7 @@ export async function getFeederReport(period: Date): Promise<FeederReport> {
       technicalLossPercent,
       flowMeasured,
       flowExceedsConsumption:
-        flowMeasured && consumedKwh !== null && flow.sum > consumedKwh,
+        flowMeasured && consumedKwh !== null && electricFlowKwh > consumedKwh,
     };
   });
 

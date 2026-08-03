@@ -161,6 +161,33 @@ export function Donut({
   );
 }
 
+/** Donut diagramma — legendsiz. BarList bilan juftlikda ishlatiladi. */
+export function PieChart({
+  parts,
+  size = 160,
+}: {
+  parts: { label: string; share: number; color: string }[];
+  size?: number;
+}) {
+  const starts = parts.map((_, index) =>
+    parts.slice(0, index).reduce((sum, p) => sum + p.share, 0),
+  );
+  const stops = parts
+    .map((p, i) => `${p.color} ${starts[i]}% ${starts[i] + p.share}%`)
+    .join(", ");
+
+  return (
+    <div
+      className="viz-fade relative shrink-0 rounded-full"
+      style={{ width: size, height: size, background: `conic-gradient(${stops})` }}
+      role="img"
+      aria-label={parts.map((p) => `${p.label} ${formatNumber(p.share)}%`).join(", ")}
+    >
+      <div className="absolute inset-[22%] rounded-full bg-white dark:bg-zinc-950" />
+    </div>
+  );
+}
+
 /**
  * Ikki qismli qiyosiy bar — texnologik va tijoriy yo'qotish.
  * Segmentlar orasida 2px tirqish: ranglar bir-biriga yopishmasin.

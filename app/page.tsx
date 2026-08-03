@@ -24,6 +24,7 @@ import {
   Donut,
   KpiCard,
   LossBars,
+  PieChart,
   RankList,
 } from "@/components/dashboard/widgets";
 import { Card, Notice } from "@/components/ui";
@@ -89,9 +90,14 @@ export default async function Home({
     },
   });
 
+  const CHART_COLORS = [
+    "#2a78d6", "#eb6834", "#1baf7a", "#eda100",
+    "#8b5cf6", "#06b6d4", "#ec4899", "#84cc16",
+    "#f97316", "#6366f1", "#14b8a6",
+  ];
 
   // Asosiy taqsimot: "Umumiy" da fiderlar, fider tanlansa TP'lar kesimi.
-  const distribution = selectedId
+  const distributionBase = selectedId
     ? tpPoints
         .map((tp) => ({
           label: `TP ${tp.tpNumber}`,
@@ -110,6 +116,18 @@ export default async function Home({
         }))
         .filter((i) => i.value > 0)
         .sort((a, b) => b.value - a.value);
+
+  const distribution = distributionBase.map((item, i) => ({
+    ...item,
+    color: CHART_COLORS[i % CHART_COLORS.length],
+  }));
+
+  const distributionTotal = distribution.reduce((s, i) => s + i.value, 0);
+  const pieData = distribution.map((item) => ({
+    label: item.label,
+    share: distributionTotal > 0 ? (item.value / distributionTotal) * 100 : 0,
+    color: item.color,
+  }));
 
   const lossItems = data.rows
     .map((r) => {
@@ -157,7 +175,7 @@ export default async function Home({
       />
 
       {/* ── Energiya KPI ── */}
-      <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
         <KpiCard
           icon={Zap}
           label="Oqib o'tgan energiya"
@@ -186,6 +204,8 @@ export default async function Home({
           label="Texnologik yo'qotish"
           value={formatNumber(energy.technical)}
           unit="kVt·s"
+          // Normativ 12% — lekin u o'lchangan qismdan olinadi, shuning uchun
+          // jamiga nisbatan ulush boshqacha chiqadi. Ikkalasi ham ko'rsatiladi.
           hint={`${formatNumber(energy.technicalShare)}%`}
           accent="warning"
           progress={energy.technicalShare}
@@ -268,7 +288,12 @@ export default async function Home({
                 : "Fiderlar bo'yicha energiya oqimi"
             }
           >
-            <BarList items={distribution} />
+            <div className="flex items-center gap-4">
+              <div className="min-w-0 flex-1">
+                <BarList items={distribution} />
+              </div>
+              {pieData.length > 0 && <PieChart parts={pieData} size={160} />}
+            </div>
           </Card>
         </div>
 
@@ -392,7 +417,10 @@ export default async function Home({
         <Card title="Reaktiv energiya">
           <div className="grid grid-cols-3 gap-2">
             <Figure label="R+ (induktiv)" value={formatNumber(reactive.plus)} />
-            <Figure label="R− (kapasitiv)" value={formatNumber(reactive.minus)} />
+            <Figure
+              label="R− (kapasitiv)"
+              value={formatNumber(reactive.minus)}
+            />
             <Figure label="Balans" value={formatNumber(reactive.net)} />
           </div>
           <p className="mt-3 text-xs text-zinc-500">
@@ -412,35 +440,27 @@ export default async function Home({
           <Card title="Energiya balansi">
             <div className="viz flex flex-col gap-3">
               <BalanceRow
-                label="Elektr oqimi (TP yig'indisi)"
+                label="Foydali oqim"
                 value={energy.flow}
-                total={energy.measuredConsumed}
+                total={energy.consumed}
                 color="var(--status-good)"
               />
               <BalanceRow
                 label="Texnologik yo'qotish"
                 value={energy.technical}
-                total={energy.measuredConsumed}
+                total={energy.consumed}
                 color="var(--status-warning)"
               />
               <BalanceRow
                 label="Tijoriy yo'qotish"
                 value={energy.commercial}
-                total={energy.measuredConsumed}
+                total={energy.consumed}
                 color="var(--status-critical)"
               />
               <p className="text-xs text-zinc-500">
-                Uch qism {formatNumber(energy.measuredConsumed)} kVt·s ni
-                to&apos;liq bo&apos;ladi — bu oqimi o&apos;lchangan fiderlar
-                iste&apos;moli.
-                {energy.unmeasuredConsumed > 0 && (
-                  <>
-                    {" "}
-                    Yana {formatNumber(energy.unmeasuredConsumed)} kVt·s TP
-                    biriktirilmagan fiderlarga to&apos;g&apos;ri keladi — ularda
-                    oqim noma&apos;lum.
-                  </>
-                )}
+                Foydali oqim = oqib o&apos;tgan energiya − umumiy
+                yo&apos;qotish. Uch qism {formatNumber(energy.consumed)} kVt·s
+                ni to&apos;liq bo&apos;ladi.
               </p>
             </div>
           </Card>

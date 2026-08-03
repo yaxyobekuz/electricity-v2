@@ -11,54 +11,76 @@ const prisma = new PrismaClient({
   Fider darajasidagi ko'rsatkichlar — .claude/docs/umumiy_hisobot.xlsx
   faylidagi HAQIQIY qiymatlar.
 
-  01.07.2026 — boshlang'ich o'lchov (undan oldingi ko'rsatkich noma'lum,
-               shuning uchun iste'mol hisoblanmaydi).
-  01.08.2026 — hisoblanadigan davr.
+  Ustunlar mosligi:
+    "Бир ойлик окиб утган электр"          → consumedKwh   (farq × koeffitsient)
+    "Elektr oqimi"                          → electricFlowKwh (yetib borgan foydali oqim)
+    "Texnoligik yo'qotish 12% koefitsiyent" → texnologik yo'qotish
+    "Tijoriy yo'qotish"                     → tijoriy yo'qotish
 
-  Buni alohida fayl qilib qo'ydik, chunki `seed.ts` faqat TUZILMANI yaratadi.
+  DIQQAT: "Elektr oqimi" TP hisoblagichlari yig'indisi EMAS — u alohida
+  o'lchanadigan qiymat. Ba'zi fiderlarda ular mos keladi (Jo'jaxona,
+  Kamoliy), ba'zilarida esa yo'q. Shuning uchun u bazaga alohida saqlanadi,
+  TP yig'indisi esa solishtirish uchun alohida hisoblanadi.
+
+  T1 ввод'idagi fiderlarda oqim o'lchanmagan — ular uchun `flow` yo'q.
+
   Ishga tushirish: npx tsx prisma/seed-feeder-readings.ts
 */
 
-const READINGS: Record<string, { july: number; august: number }> = {
-  ChPZ: { july: 1290, august: 1295 },
-  "Bo'zchi": { july: 8952, august: 9194 },
-  Paranda: { july: 10791, august: 10926 },
-  Tumor: { july: 2872, august: 3009 },
-  "Qo'rg'ongaz": { july: 804, august: 845 },
-  "Jo'jaxona": { july: 28181, august: 28325 },
-  Qiyali: { july: 8450, august: 8550 },
-  Kamoliy: { july: 18470, august: 18707 },
-  Tashlama: { july: 7312, august: 7451 },
-  Tola: { july: 17523, august: 17594 },
-  Xaqulobod: { july: 19850, august: 19989 },
+type Row = {
+  july: number;
+  august: number;
+  /** "Elektr oqimi" — o'lchanmagan bo'lsa null. */
+  flow: number | null;
+};
+
+const READINGS: Record<string, Row> = {
+  // ВВОД Т1 — oqim o'lchanmagan
+  ChPZ: { july: 1290, august: 1295, flow: null },
+  "Bo'zchi": { july: 8952, august: 9194, flow: null },
+  Paranda: { july: 10791, august: 10926, flow: null },
+  Tumor: { july: 2872, august: 3009, flow: null },
+  "Qo'rg'ongaz": { july: 804, august: 845, flow: null },
+
+  // ВВОД Т2 — oqim o'lchangan
+  "Jo'jaxona": { july: 28181, august: 28325, flow: 317911.8 },
+  Qiyali: { july: 8450, august: 8550, flow: 155565.7 },
+  Kamoliy: { july: 18470, august: 18607, flow: 565384.9 },
+  Tashlama: { july: 7312, august: 7451, flow: 237989.3 },
+  Tola: { july: 17523, august: 17594, flow: 155987.9 },
+  Xaqulobod: { july: 19850, august: 20112, flow: 683812.3 },
 };
 
 const JULY = new Date(Date.UTC(2026, 6, 1));
 const AUGUST = new Date(Date.UTC(2026, 7, 1));
+const TECHNICAL_PERCENT = 12;
 
 async function main() {
   const feeders = await prisma.feeder.findMany({
     select: { id: true, name: true, coefficient: true },
   });
 
-  let saved = 0;
   const missing: string[] = [];
+  const mismatched: string[] = [];
+  let saved = 0;
 
-  for (const [name, values] of Object.entries(READINGS)) {
+  for (const [name, row] of Object.entries(READINGS)) {
     const feeder = feeders.find((f) => f.name === name);
     if (!feeder) {
       missing.push(name);
       continue;
     }
 
-    // Iyul — boshlang'ich: iste'mol hisoblanmaydi.
+    // Iyul — boshlang'ich o'lchov: oldingi ko'rsatkich noma'lum,
+    // shuning uchun iste'mol hisoblanmaydi.
     const july = {
-      meterValue: values.july,
+      meterValue: row.july,
       previousValue: 0,
       difference: 0,
       consumedKwh: 0,
       coefficient: feeder.coefficient,
-      technicalLossPercent: 12,
+      technicalLossPercent: TECHNICAL_PERCENT,
+      electricFlowKwh: null,
       isBaseline: true,
     };
 
@@ -68,14 +90,26 @@ async function main() {
       create: { feederId: feeder.id, period: JULY, ...july },
     });
 
-    const difference = values.august - values.july;
+    const difference = row.august - row.july;
+    const consumedKwh = difference * feeder.coefficient;
+
+    // Fayldagi "Бир ойлик окиб утган электр" bilan solishtiramiz —
+    // koeffitsient noto'g'ri bo'lsa shu yerda ko'rinadi.
+    const technical = (consumedKwh * TECHNICAL_PERCENT) / 100;
+    if (row.flow !== null && row.flow + technical > consumedKwh) {
+      mismatched.push(
+        `${name}: oqim ${row.flow} + texnologik ${technical} > iste'mol ${consumedKwh}`,
+      );
+    }
+
     const august = {
-      meterValue: values.august,
-      previousValue: values.july,
+      meterValue: row.august,
+      previousValue: row.july,
       difference,
-      consumedKwh: difference * feeder.coefficient,
+      consumedKwh,
       coefficient: feeder.coefficient,
-      technicalLossPercent: 12,
+      technicalLossPercent: TECHNICAL_PERCENT,
+      electricFlowKwh: row.flow,
       isBaseline: false,
     };
 
@@ -88,14 +122,19 @@ async function main() {
     saved += 1;
   }
 
-  const total = await prisma.feederReading.aggregate({
+  const agg = await prisma.feederReading.aggregate({
     where: { period: AUGUST },
-    _sum: { consumedKwh: true },
+    _sum: { consumedKwh: true, electricFlowKwh: true },
   });
 
-  console.log(`${saved} ta fider uchun iyul va avgust ko'rsatkichlari saqlandi.`);
+  console.log(`${saved} ta fider uchun iyul va avgust saqlandi.`);
   if (missing.length) console.log("Topilmagan fiderlar:", missing.join(", "));
-  console.log(`Avgust jami iste'mol: ${total._sum.consumedKwh} kVt·s`);
+  if (mismatched.length) {
+    console.log("Ziddiyatli qatorlar:");
+    for (const m of mismatched) console.log("  " + m);
+  }
+  console.log(`Avgust jami iste'mol : ${agg._sum.consumedKwh}`);
+  console.log(`Avgust jami oqim     : ${agg._sum.electricFlowKwh}`);
 }
 
 main()

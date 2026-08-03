@@ -38,11 +38,20 @@ export type DashboardData = {
     /** Oqimi o'lchangan fiderlar iste'moli — taqsimot shu ustida quriladi. */
     measuredConsumed: number;
     unmeasuredConsumed: number;
-    /** Foydali oqim — TP hisoblagichlariga yetib borgan energiya. */
+    /**
+     * Foydali oqim = oqib o'tgan energiya − umumiy yo'qotish.
+     * Oqimi hisobotda ko'rsatilgan fiderlarda bu qiymat aynan o'sha
+     * "Elektr oqimi" ustuniga teng chiqadi (tijoriy yo'qotish shu ayirmadan
+     * kelib chiqqani uchun).
+     */
     flow: number;
     technical: number;
     commercial: number;
     totalLoss: number;
+    /**
+     * Ulushlar JAMI iste'molga nisbatan — ya'ni ekranda ko'rinib turgan
+     * songa. Shunda oqim + texnologik + tijoriy = 100%.
+     */
     flowShare: number;
     technicalShare: number;
     commercialShare: number;
@@ -135,7 +144,6 @@ export async function getDashboardData(
     (s, r) => s + (r.consumedKwh ?? 0),
     0,
   );
-  const flow = measuredRows.reduce((s, r) => s + r.electricFlowKwh, 0);
   const technical = measuredRows.reduce(
     (s, r) => s + (r.technicalLossKwh ?? 0),
     0,
@@ -145,8 +153,14 @@ export async function getDashboardData(
     0,
   );
   const totalLoss = technical + commercial;
-  const share = (v: number) =>
-    measuredConsumed > 0 ? (v / measuredConsumed) * 100 : 0;
+
+  // Foydali oqim — bevosita ayirma. Bu uchta qismning yig'indisini
+  // ko'rinib turgan jami songa teng qiladi:
+  //   oqim + texnologik + tijoriy = oqib o'tgan energiya
+  const flow = consumed - totalLoss;
+
+  // Maxraj ham o'sha jami son — foizlar ekrandagi songa mos keladi.
+  const share = (v: number) => (consumed > 0 ? (v / consumed) * 100 : 0);
 
   // ── Abonentlar ────────────────────────────────────────────────
   const consumers = tpReadings.reduce(
@@ -261,7 +275,7 @@ export async function getDashboardData(
       technicalShare: share(technical),
       commercialShare: share(commercial),
       totalLossShare: share(totalLoss),
-      flowMeasured: measuredRows.length > 0,
+      flowMeasured: consumed > 0,
     },
     consumers: {
       total: consumers.total,
